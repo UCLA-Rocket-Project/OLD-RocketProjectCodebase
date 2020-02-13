@@ -86,7 +86,7 @@ for i = 1:length(t)
     elseif real(OF) > 1.7
         OF = 1.7;
     elseif ~isreal(OF)
-        OF = 1.4;
+        OF = 1.3;
     end
     T_c = F_T(Pc,OF)*1.8;
     
