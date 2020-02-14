@@ -82,27 +82,32 @@ Tank Dynamics:
  - The liquid and gas within the oxidizer tank is assumed to be in thermal
    equilibrium. The van der Waal's equation is used to model the state of the
    gas and while not completely as accurate as empirical saturation state data,
-   allows the calculation of non-saturated states. 
+   allows the calculation of non-saturated states.
+   
 Pressurant Gas:
  - Pressurant gas can be modeled as loaded into the ullage volume or supplied 
    from an external tank. In either case, all gas within the tank is assumed to
    be in thermal equilibrium with the nitrous oxide. Isentropic expansion is
    simulated in the external pressurant tank. 
+
 Injector Dynamics:
  - Two types of injector flow are modeled. While liquid remains in the tank, 
    two-phase flow is assumed, modeled using the Homogeneous Equilibrium Model.
    With only gas in the oxidizer tank, isentropic compressible quasi-1D flow 
    modelling is used. However, no frictional losses are modeled apart from a
    discharge coefficient factor for the injector orifices. 
+
 Combustion:
  - The combustion is modeled by predicting the exhaust properties within the
    combustion chamber. An efficiency factor, or c-star efficiency, is applied
    to the exhaust gas temperature. 
+
 Nozzle:
  - Quasi-1D isentropic flow is used to model the nozzle flow, including the
    cases of subsonic flow, supersonic flow, and normal shocks in the nozzle. 
    A nozzle exhaust thermal efficiency is applied to the exhaust energy. A
    correction factor accounting for the divergence factor of the nozzle is
    also applied. 
+
 Integration:
  - Euler's method is used for integration, using a constant time step.
