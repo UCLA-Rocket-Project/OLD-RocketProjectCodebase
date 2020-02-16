@@ -1,4 +1,5 @@
-%% 
+%%
+load CEADAT_LOXETH_93WW
 close all
 % thermodynamic fluid properties and constants
 mw_HE = 4;      %lb/lbmol
@@ -48,10 +49,10 @@ OF_arr = zeros(1,length(t));
 
 % Initial Conditions
 Pt = 4500; % psi
-T_c = 300*1.8; % R
-Pc = 50; % psi
+T_c = 400*1.8; % R
+Pc = 30; % psi
 OF = 1.4;
-Pi = Pc*1.18; % manifold pressure, psi
+Pi = 350; % manifold pressure, psi
 R_univ = 10.73159; %psi*ft3/lbmol*R
 mdot_ox = CdA_lox_inj/12*sqrt(2*g*rho_ox*(Pi-Pc));
 mdot_fuel = CdA_fuel_inj/12*sqrt(2*g*rho_fuel*(Pi-Pc));
@@ -60,7 +61,6 @@ mdot_fuel = CdA_fuel_inj/12*sqrt(2*g*rho_fuel*(Pi-Pc));
 F_T = scatteredInterpolant(CEA.p,CEA.OF,CEA.t);
 F_mw = scatteredInterpolant(CEA.p,CEA.OF,CEA.mw);
 F_gam = scatteredInterpolant(CEA.p,CEA.OF,CEA.gam);
-
 
 for i = 1:length(t)
     if i > 1
@@ -91,7 +91,7 @@ for i = 1:length(t)
     T_c = F_T(Pc,OF)*1.8;
     
     Vdot = mdot_ox/rho_ox + mdot_fuel/rho_fuel;
-    mdot_press = Q_tot*Pt/(R_HE*T_press);
+    % mdot_press = Q_tot*Pt/(R_HE*T_press);
     
     Pc_arr(i) = Pc;
     T_arr(i) = T_c;   
