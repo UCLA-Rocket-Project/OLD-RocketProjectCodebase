@@ -419,21 +419,6 @@ fprintf("Total Propellant Burned: %.1f lbs \n \n", totprop)
 
 
 %% Chugging Analysis
-
-tstats = [mean(diff(time0(burnind)))  std(diff(time0(burnind)))]                      % Information Only
-%tr = linspace(min(time0(ind)), max(time0(ind)), length(time0(ind)));                   % Uniformly-Sampled Time Vector
-[vr, tr] = resample(CCRaw(burnind), time0(burnind));                                       % Resampled Signal Vector
-L = length(tr);                                             % Signal Length
-Ts = mean(diff(tr));                                        % Sampling Interval
-Fs = 1/Ts;                                                  % Sampling Frequency
-Fn = Fs/2;                                                  % Nyquist Frequency
-FTvr = fft(vr)/L;                                           % Fourier Transform
-Fv = linspace(0, 1, fix(L/2)+1)*Fn;                         % Frequency Vector
-Iv = 1:length(Fv);                                          % Index Vector
-figure
-loglog(Fv, abs(FTvr(Iv))*2)
-grid
-%%
 avCC = smoothdata(CCRaw(burnind),'gaussian',10);
 figure
 plot(time0(burnind),CCRaw(burnind),time0(burnind),avCC)
