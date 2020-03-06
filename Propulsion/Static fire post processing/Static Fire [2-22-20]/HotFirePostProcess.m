@@ -223,12 +223,12 @@ set(gca, 'FontSize', 18, 'FontWeight', 'bold')
 grid on
 
 %% Injector Stiffness w.r.t Time
-oxdppc = (oxman-CCRaw)./CCRaw*100;
-fueldppc = (fuelman-CCRaw)./CCRaw*100;
+oxdppc = (oxman-CC)./CC*100;
+fueldppc = (fuelman-CC)./CC*100;
 figure
 hold on
 title('Injector Pressure Drop Normalized by Chamber Pressure')
-plot(time0(ind),oxdppc(ind),time0(ind),fueldppc(ind),'LineWidth',2)
+plot(time0(ind),smoothdata(oxdppc(ind),'gaussian',6),time0(ind),smoothdata(fueldppc(ind),'gaussian',6),'LineWidth',2)
 instabilitylimit = 13;
 yline(instabilitylimit,'--','LineWidth',2);
 s = patch([0,0,time0(end),time0(end)],[0,instabilitylimit,instabilitylimit,0],[0.2,0,0]+0.8);
@@ -416,4 +416,48 @@ fprintf("Thrust: %.1f lbf \n", Thrust_avg)
 fprintf("Total Fuel: %.1f lbs \n", totfuel)
 fprintf("Total Oxidizer Burned: %.1f lbs \n", totlox)
 fprintf("Total Propellant Burned: %.1f lbs \n \n", totprop)
+
+
+%% Chugging Analysis
+
+tstats = [mean(diff(time0(burnind)))  std(diff(time0(burnind)))]                      % Information Only
+%tr = linspace(min(time0(ind)), max(time0(ind)), length(time0(ind)));                   % Uniformly-Sampled Time Vector
+[vr, tr] = resample(CCRaw(burnind), time0(burnind));                                       % Resampled Signal Vector
+L = length(tr);                                             % Signal Length
+Ts = mean(diff(tr));                                        % Sampling Interval
+Fs = 1/Ts;                                                  % Sampling Frequency
+Fn = Fs/2;                                                  % Nyquist Frequency
+FTvr = fft(vr)/L;                                           % Fourier Transform
+Fv = linspace(0, 1, fix(L/2)+1)*Fn;                         % Frequency Vector
+Iv = 1:length(Fv);                                          % Index Vector
+figure
+loglog(Fv, abs(FTvr(Iv))*2)
+grid
+%%
+avCC = smoothdata(CCRaw(burnind),'gaussian',10);
+figure
+plot(time0(burnind),CCRaw(burnind),time0(burnind),avCC)
+
+%%
+L = length(time0(burnind))*4;
+tq = linspace(min(time0(burnind)), max(time0(burnind)), L);
+inst = CCRaw(burnind)-avCC;
+CCq = interp1(time0(burnind),CCRaw(burnind),tq);
+avCCq = interp1(time0(burnind),avCC,tq);
+instq = CCq-avCCq;
+figure
+plot(time0(burnind),inst,tq,instq);
+legend('raw','interp')
+
+T = mean(diff(tq)); % sampling period
+Fs = 1/T; % Sampling Frequency
+FF = fft(instq);
+P2 = abs(FF/L); % two-sided spectrum
+P1 = 2*P2(1:L/2+1); % single-sided spectrum, x2 to account for all values
+f = Fs*(0:(L/2))/L;
+figure
+semilogx(f,smoothdata(P1,'gaussian',4),'LineWidth',2)
+grid on
+xlabel('Frequency, Hz')
+ylabel('Amplitude')
 
