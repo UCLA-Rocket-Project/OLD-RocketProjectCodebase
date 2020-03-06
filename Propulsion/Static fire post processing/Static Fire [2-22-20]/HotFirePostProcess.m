@@ -424,22 +424,24 @@ figure
 plot(time0(burnind),CCRaw(burnind),time0(burnind),avCC)
 
 %%
-L = length(time0(burnind))*4;
-tq = linspace(min(time0(burnind)), max(time0(burnind)), L);
-inst = CCRaw(burnind)-avCC;
-CCq = interp1(time0(burnind),CCRaw(burnind),tq);
-avCCq = interp1(time0(burnind),avCC,tq);
-instq = CCq-avCCq;
+L = length(time0(burnind))*4; % increase length for better interpolation
+tq = linspace(min(time0(burnind)), max(time0(burnind)), L); % create time array
+inst = CCRaw(burnind)-avCC; % instbility, average CC subtracted out
+CCq = interp1(time0(burnind),CCRaw(burnind),tq); % queried CC at sampling points
+avCCq = interp1(time0(burnind),avCC,tq);  % queried average CC at sampling points
+instq = CCq-avCCq;  % queried instability
+
+% see how they match up
 figure
 plot(time0(burnind),inst,tq,instq);
 legend('raw','interp')
 
 T = mean(diff(tq)); % sampling period
 Fs = 1/T; % Sampling Frequency
-FF = fft(instq);
-P2 = abs(FF/L); % two-sided spectrum
+FF = fft(instq); % Fast Fourier Transform
+P2 = abs(FF/L); % two-sided spectrum (includes negative frequencies)
 P1 = 2*P2(1:L/2+1); % single-sided spectrum, x2 to account for all values
-f = Fs*(0:(L/2))/L;
+f = Fs*(0:(L/2))/L;  % create frequency array
 figure
 semilogx(f,smoothdata(P1,'gaussian',4),'LineWidth',2)
 grid on
