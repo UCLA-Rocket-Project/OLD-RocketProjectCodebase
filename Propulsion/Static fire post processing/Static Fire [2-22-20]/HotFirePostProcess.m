@@ -8,21 +8,23 @@ time = dat(:,1);
 oxman = 242.47*dat(:,3) - 237.6;
 fuelman = dat(:,13);
 % CCRaw =  245.23*dat(:,5)- 240.52;
-CCRaw =  267.9499*dat(:,5) - 263.9259;
+CCRaw =  245.23*dat(:,5) - 240.52;
 oxtank = 252.39*dat(:,6) - 252.92;
 press = dat(:,11);
 % pnuem = 61.045*PneumaticsRaw - 63.905;
 fueltank = oxtank; % fuel tank not aquired for this fire
 Thrust = dat(:,9);
-Thrust = Thrust - mean(Thrust(9280:10000));
-derivedPC = Thrust(ind)./(At.*1.4);
+Thrust = Thrust*0.9191-23.1582;
+
+ind = 8301:8824; % data index range for burn
+
 % CC = CCRaw;
 
 % Zero the data set time
-ind = 8301:8824; % data index range for burn
 t0 = 1905000;
 time0 = (time - t0)/1000;
 burnind = (ind(1)+30):(ind(end)-200); % for processing data relevent to the burn;
+
 %% Engine Properties
 At = 1.77; % throat area, in2
 Ae = pi/4*2.81^2; % exit area, in2
@@ -31,12 +33,14 @@ g = 32.174;
 rho_lox = 72.2; % lb / ft3
 rho_fuel = 53.4; % lb / ft3
 
-CdA_lox_inj = 0.0531; % in ** 2
-CdA_fuel_inj = 0.03703; % in ** 2
-CdA_lox_lines = 0.05175;
-CdA_fuel_lines = 0.05274;
+CdA_lox_inj = 0.0453; % in ** 2
+CdA_fuel_inj = 0.0339; % in ** 2
+CdA_lox_lines = 0.0410;
+CdA_fuel_lines = 0.0564;
 CdA_lox = 1/(sqrt(1/CdA_lox_inj^2+1/CdA_lox_lines^2));
 CdA_fuel = 1/(sqrt(1/CdA_fuel_lines^2+1/CdA_fuel_inj^2));
+
+derivedPC = Thrust(ind)./(At.*1.4);
 
 %% Predict C_tau theoeretical
 load CEADAT_LOXETH_93WW.mat
@@ -50,21 +54,37 @@ gam = F_gam(250, 1.4); % get specific heat ratio from interpolated CEA
 M = 3; % guess mach number
 err = 1;
 c1 = (gam + 1)/2; c2 = gam - 1;
+
 while abs(err) > 0.001
     Arat = c1^(-c1/c2)*((1+c2/2*M^2)^(c1/c2))/M;
     err = Arat - Ae/At;
     M = M-err*0.1;
 end 
+
 % Solve for exit pressure based on mach number
-Pe = CCRaw.*(1+c2/2*M^2)^(-gam/c2); % exit pressure,psi
+Pe = (14.7+CCRaw).*(1+c2/2*M^2)^(-gam/c2); % exit pressure,psi
 Pa = 14.7; % ambient pressure
-C_tau_theo = sqrt(2*gam^2/c2*(1/c1)^(2*c1/c2)*(1-(Pe./CCRaw).^(c2/gam)))+(Pe-Pa).*Ae./(CCRaw.*At);
+C_tau_theo = sqrt(2*gam^2/c2*(1/c1)^(2*c1/c2)*(1-(Pe./(14.7+CCRaw)).^(c2/gam)))+(Pe-Pa).*Ae./((14.7+CCRaw).*At);
 
 % Get rid of nonsense startup and ending transient values
 C_tau_theo = [ones(ind(1)+25-1,1)*C_tau_theo(ind(1)+25);...
               C_tau_theo((ind(1)+25):(ind(end)-100));                        ...
               ones(length(Thrust)-(ind(end)-100),1)*C_tau_theo(ind(end)-100)];
-CC = Thrust ./ (At.*C_tau_theo); % PC derived from thrust and thrust coefficient
+% CC = Thrust ./ (At.*C_tau_theo); % PC derived from thrust and thrust coefficient
+CC = Thrust ./ (At.*1.41); % PC derived from thrust and thrust coefficient
+
+%% Thrust Coefficient
+c_tau = Thrust ./ (CC .* At);
+figure
+plot(time0(ind),C_tau_theo(ind),'LineWidth',2)
+title('C\tau Theoretical')
+xlabel('Time (s)')
+ylabel('Thrust Coefficient, %')
+legend('C\tau');
+ylim([1.2,1.6])
+xlim([0 20]);
+set(gca, 'FontSize', 20, 'FontWeight', 'bold')
+grid on
 
 %% Calculate Mass Flow Rates
 mdot_lox_1 = real(CdA_lox/12 * sqrt(2.*g.*rho_lox.*(oxtank-CC)));
@@ -72,7 +92,7 @@ mdot_lox_2 = real(CdA_lox_inj/12 * sqrt(2.*g.*rho_lox.*(oxman-CC)));
 mdot_lox_3 = real(CdA_lox_lines/12 * sqrt(2.*g.*rho_lox.*(oxtank-oxman)));
 mdot_fuel_1 = real(CdA_fuel/12 * sqrt(2.*g.*rho_fuel.*(fueltank-CC)));
 mdot_fuel_2 = real(CdA_fuel_inj/12 * sqrt(2.*g.*rho_fuel.*(fuelman-CC)));
-mdot_fuel_3 = real(CdA_fuel_lines/12 * sqrt(2.*g.*rho_fuel.*(oxtank-fuelman)));
+mdot_fuel_3 = real(CdA_fuel_lines/12 * sqrt(2.*g.*rho_fuel.*(fueltank-fuelman)));
 
 % Compare Mass Flow Calculations
 figure
@@ -121,6 +141,24 @@ ylabel('Pressure (psig)')
 xlabel('Time (s)')
 legend('Oxidizer Tank (psig)','Fuel Tank (psig)')
 set(gca, 'FontSize', 18, 'FontWeight', 'bold')
+grid on
+%% Tank Pressures
+figure
+subplot(2,1,1);
+plot(time0,press,'LineWidth',2)
+grid on
+title('Tank Pressures vs Time')
+ylabel('Pressure (psig)')
+legend('Pressurant Tank');
+xlim([-150, 30])
+set(gca, 'FontSize', 18, 'FontWeight', 'bold')
+subplot(2,1,2);
+plot(time0,oxtank,time0,fueltank,'LineWidth',2);
+ylabel('Pressure (psig)')
+xlabel('Time (s)')
+legend('Oxidizer Tank (psig)','Fuel Tank (psig)')
+set(gca, 'FontSize', 18, 'FontWeight', 'bold')
+xlim([-150, 30])
 grid on
 
 %% All Presures
@@ -204,7 +242,7 @@ xlim([5,13]);
 ylim([0 70]);
 grid on
 %% Mixture Ratio
-OF = abs(mdot_lox_1)./abs(mdot_fuel_2); % Mixture ratio,Ox: Tank-CC Fuel: Man-CC
+OF = abs(mdot_lox_1)./abs(mdot_fuel_1); % Mixture ratio,Ox: Tank-CC Fuel: Man-CC
 OF_optimal = 1.45;
 
 figure
@@ -222,7 +260,7 @@ set(gca, 'FontSize', 20, 'FontWeight', 'bold')
 
 %% Combustion Efficiency
 
-cstar_ideal = F_cstar(250, 1.4)*3.28; % ft / s
+cstar_ideal = F_cstar(220, 1.3)*3.28; % ft / s
 mdot = abs(mdot_fuel_1)+abs(mdot_lox_1);
 cstar = CC.* At .* g ./ mdot;
 figure
@@ -248,21 +286,9 @@ xlim([0 20]);
 ylim([0,105]);
 set(gca, 'FontSize', 15, 'FontWeight', 'bold')
 grid on
-%%
-c_tau = Thrust ./ (CC .* At);
-figure
-plot(time0(ind),c_tau(ind),'LineWidth',2)
-title('C\tau')
-xlabel('Time (s)')
-ylabel('Thrust Coefficient, %')
-legend('C\tau');
-ylim([1.2,1.6])
-xlim([0 20]);
-set(gca, 'FontSize', 20, 'FontWeight', 'bold')
-grid on
 
 %% Adiabatic Flame Temperature
-Mw = F_mw(250,1.4); % kg / kmol
+Mw = F_mw(250,1.3); % kg / kmol
 R = 8314;
 n1 = gam + 1;
 n2 = gam - 1;
@@ -325,10 +351,10 @@ figure
 plot(time0(ind), oxtank_spe(ind));
 
 %%
-mdot_lox_1(1:ind(1)) = 0;
+mdot_lox_2(1:ind(1)) = 0;
 Q_ind = (ind(1)+50):(ind(end)-100); % taking only the relevant data
-Q_lox = mdot_lox_1 /rho_lox; % volumetric flow of ox, ft3/s
-Q_fuel = mdot_fuel_1 / rho_fuel; % volumetric flow of fuel, ft3/s
+Q_lox = mdot_lox_2 /rho_lox; % volumetric flow of ox, ft3/s
+Q_fuel = mdot_fuel_2 / rho_fuel; % volumetric flow of fuel, ft3/s
 Q_tot = Q_lox + Q_fuel; % total flow, ft3/s
 Q_scfm = Q_tot .* oxtank./ 14.7 .* 60;     % Total flow in standard cubic feet per minute, SCFM
 %%
@@ -358,14 +384,14 @@ F_regoutlet = scatteredInterpolant(press(Q_ind),Q_scfm(Q_ind),oxtank_spe(Q_ind))
 %% performance parameters
 totimp = cumtrapz(time0(ind), Thrust(ind));
 totimp = totimp(end);
-totfuel = cumtrapz(time0(burnind), mdot_fuel_1(burnind));
+totfuel = cumtrapz(time0(burnind), mdot_fuel_2(burnind));
 totfuel= totfuel(end);
-totlox = cumtrapz(time0(burnind), mdot_lox_1(burnind));
+totlox = cumtrapz(time0(burnind), mdot_lox_2(burnind));
 totlox = totlox(end);
 totprop = totlox + totfuel;
 
-mdot_lox_avg = mean(mdot_lox_1(burnind));
-mdot_fuel_avg = mean(mdot_fuel_1(burnind));
+mdot_lox_avg = mean(mdot_lox_2(burnind));
+mdot_fuel_avg = mean(mdot_fuel_2(burnind));
 mdot_avg = mean(mdot(burnind));
 OF_avg = mean(OF(burnind));
 CC_avg = mean(CC(burnind));
