@@ -447,4 +447,6 @@ semilogx(f,smoothdata(P1,'gaussian',4),'LineWidth',2)
 grid on
 xlabel('Frequency, Hz')
 ylabel('Amplitude')
-
+xline(3,'--','LineWidth',2)
+xline(20,'--','LineWidth',2)
+legend('Sampled Data','3 Hz','20 Hz')
