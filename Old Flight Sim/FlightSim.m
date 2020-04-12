@@ -250,8 +250,6 @@ CNai0 = [noseCNa; 0; tailCNa; finsCNa];
 CPi = [noseCP; bodyCP; tailCP; finCP];
 CGi = [noseCG; bodyCG; tailCG; finsCG];
 
-save('Problem_3_var','Wy','m','MOI','PtMOI','CNai0','CPi','CGi','CG','k','AP','noseDiameter');
-
 
 % distMin = zeros(1,101);
 % distMax = zeros(1,101);
