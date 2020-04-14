@@ -584,7 +584,9 @@ end
 %save('FlightSim_apogee_Tsub30','timeLaunch_arr','turbProb_arr','Temp0_arr','meanWind_arr','P0_arr','apogee_arr','vDeploy_arr','aoaOR_arr','aoa_arr');
 %save('FlightSim_apogee','timeLaunch_arr','turbProb_arr','Temp0_arr','meanWind_arr','P0_arr','dist_arr','distT_arr','apogee_arr','vDeploy_arr','aoaOR_arr','aoa_arr');
 %save('FlightSimWindEffects_T','meanWind_arr','aoaOR_arr','vDeploy_arr','phi_arr');
-save('FlightSimApogeeSpread','tai_arr','rx_arr','ry_arr')
+%save('FlightSimApogeeSpread','tai_arr','rx_arr','ry_arr')
+
+save('FlightSim_dist','dist_arr')
 
 % hold on;
 % plot1 = plot(groundWind*0.681818,distMax,'LineWidth',3);

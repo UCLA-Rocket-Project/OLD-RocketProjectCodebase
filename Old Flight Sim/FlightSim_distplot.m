@@ -1,6 +1,6 @@
 %Flight Sim trajectory plotting
 clear variables; close all; clc;
-load('FlightSim_noDeploy_new.mat');
+load('FlightSim_dist.mat');
 img_far = imread('FAR h12xw20.png');
 img_h_mi = 12; img_w_mi = 20;
 img_h = size(img_far,1); img_w = size(img_far,2);
