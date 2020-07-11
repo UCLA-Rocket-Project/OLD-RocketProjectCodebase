@@ -1,4 +1,4 @@
-function [Cd,Mach] = get_Cd(time,burn_time,velocity,Temp,RAS)
+function [Cd, Mach] = get_Cd(time, burn_time, velocity, Temp, RAS)
 %Finds Cd and Mach number using RASAero drag file, interpolation.
 
 %Find Speed of sound,

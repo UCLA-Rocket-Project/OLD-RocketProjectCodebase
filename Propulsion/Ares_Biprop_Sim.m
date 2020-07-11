@@ -106,18 +106,18 @@ xlabel('Time s')
 xlim([0 0.03])
 grid on
 
-%%
-figure
-plot(t,T_arr./1.8)
-ylabel('Temperature K','LineWidth',2)
-xlabel('Time s')
-xlim([0 0.03])
-grid on
-
-%%
-figure
-plot(t,OF_arr)
-ylabel('Temperature K','LineWidth',2)
-xlabel('Time s')
-xlim([0 0.03])
-grid on
+% %%
+% figure
+% plot(t,T_arr./1.8)
+% ylabel('Temperature K','LineWidth',2)
+% xlabel('Time s')
+% xlim([0 0.03])
+% grid on
+% 
+% %%
+% figure
+% plot(t,OF_arr)
+% ylabel('Temperature K','LineWidth',2)
+% xlabel('Time s')
+% xlim([0 0.03])
+% grid on
