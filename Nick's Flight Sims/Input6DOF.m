@@ -1,14 +1,16 @@
+clear variables;
 %% Input Parameters
 
 recovery = 0; % 0 for no recovery / 1 for recovery
-turb = 1; % 0 for none / 1 for light / 2 for medium / 3 for severe
+turb = 0; % 0 for none / 1 for light / 2 for medium / 3 for severe
 
-h = 3500;
+h = 2200;
 x0 = 282;
 y0 = 30.5;
 Temp0 = 70;
 kTemp = 10000; % Seems to be the most reasonable "tending to atmospheric model" rate
 P0 = 14.24*144;
+% hr0 = 0.28;
 hr0 = 0;
 %g = 32.174;
 lat = 34.0522*pi/180;
@@ -22,21 +24,28 @@ Eomega = 7.2921*10^(-5);
 
 % vwgx = -5*5280/3600;
 % vwgx = -27;
-vwgx = -5*5280/3600;
-vwgy = -5*5280/3600;
+vwg = 5;
+% vwg = 0;
+vwgd = 7*pi/15; % CCW from due west
+vwgx = vwg*cos(vwgd)*5280/3600;
+vwgy = -vwg*sin(vwgd)*5280/3600;
 k = 0.4;
 dref = 0.000;
 z1 = 0.1/100;
 atm_stability = 1; % 1=neutral, 2=stable, 3=unstable
 
-dw = 91.03;
-T0 = readmatrix('thrustArray.xlsx');
+load('Hot_Fire_5_1_1_Thrust_Data');
+dw = 116.7;
+T0(:,1) = time_511;
+T0(:,2) = thrust_511;
+% T0 = readmatrix('thrustArray.xlsx');
 % T0 = readmatrix('Odyssey3Thrust.xlsx');
 % T0 = readmatrix('PropSimThrust.xlsx');
 Imp = trapz(T0(:,1),T0(:,2));
-Impfactor = 9200/Imp-0.037;
-T0 = T0*Impfactor;
-Imp = trapz(T0(:,1),T0(:,2));
+Impfactor = 9700/Imp-0.037;
+% Impfactor = 9200/Imp;
+% T0 = 1*T0*Impfactor;
+% Imp = trapz(T0(:,1),T0(:,2));
 % Isp = 200;
 wp = 50;
 OF = 1.5;
@@ -44,19 +53,22 @@ wfi = wp/(OF+1);
 woi = wfi*OF;
 ww = dw+wfi+woi;
 Isp = Imp/(ww-dw);
-cgfi = 124.43/12;
-cgoi = 96.18/12;
-lfi = 22.25/12;
-loi = 25.07/12;
+cgfi = 121.7/12*1.0285;
+cgoi = 92.35/12*1.0285;
+lfi = 24/12;
+loi = 26.7/12;
 xfuel0 = cgfi-lfi/2;
 xox0 = cgoi-loi/2;
 dtank = 7/12;
 rtank = dtank/2;
 % dnoz = 4;
 dnoz = 2.81;
-cgd = 101.28/12;
-RL = 55;
-RLa = 3*pi/180;
+cgd = 111/12;
+RL = 53.5;
+
+
+% RL = 55-3.5;
+RLa = -5*pi/180;
 p0 = RLa;
 RLv = [-RL*sin(RLa),RL*cos(RLa)];
 df = (wfi/g)/(lfi*pi*rtank^2);
@@ -71,6 +83,7 @@ dt = 0.01;
 t_steps = tf/dt;
 
 Tt = interp1(T0(:,1),T0(:,2),ti:dt:tb);
+
 % if dt==0.001
 %     Tt = Tt(121:end); %If Odyssey Motor is used
 %     tb = tb-0.12;
@@ -109,11 +122,11 @@ Lf = sqrt(S^2+(Cr/2-Ct/2)^2);
 dfa = dr;
 Kf = 1+(dr/2)/(S+(dr/2)); 
 CNaf = Kf*((4*n*(S/(d/12))^2)/(1+sqrt(1+(2*Lf/(Cr+Ct))^2)));
-Ln = 35/12;
+Ln = 35/12*1.0285;
 xn = 0.466*Ln;
-LB = 125.23/12;
+LB = 125.23/12*1.0285;
 xp = Ln+LB;
-Lt = 15.75/12;
+Lt = 15.75/12*1.0285;
 xt = xp+Lt/3*((1+(1-(d/12)/dr)/(1-((d/12)/dr)^2)));
 Rl = Ln+LB+Lt;
 xB = Rl-Cr;
@@ -179,7 +192,7 @@ else
 end
 % dCDmax = 0.086;
 % dCDmax = 0.115;
-dCDmax = 0.1956;
+dCDmax = 0.1956; % From CFD
 
 Rec = 5*10^5;
 mu0 = 3.62*10^(-7);
@@ -192,24 +205,27 @@ nb = 3.6542*((Rl-Ln)/(d/12))^(-0.2733);
 % Apro = 0.84/144;
 % Apro = 0;
 % Apro = 1/144;
-Apro = 1.47/144;
-Lp = 57/12;
-aPro = 70.32;
-rpro = sqrt(Apro/pi);
-Spro = 2*2*Apro+2*pi*rpro*Lp;
+rpro = 0.97/12;
+Apro = pi/2*rpro^2;
+Lp = 68.4/12;
+aPro = 75.08;
+% rpro = sqrt(Apro/pi);
+Spro = 2*Apro+2*pi*rpro*Lp;
 % Spro = 2*2*Apro+2*2*pi*rpro/2*Lp;
 % Spro = 113.03/144;
 
+% All = 0.02053; %in
 All = 1/144; %in
-% All = 0/144; %in
 rll = sqrt(All/pi);
-Lll = 6/12;
-Sll = 2*All+2*2*pi*rll*Lll;
-aLL = Rl/2; %Midway on rocket
-muk = 0.12; %Steel on steel lubricated
-mus = 0.16; %Steel on steel lubricated
-% muk = 0; %Steel on steel lubricated
-% mus = 0; %Steel on steel lubricated
+Lll = 1.72/12;
+Sll = 2*All+2*pi*rll*Lll;
+aLL = 80.97;
+aLL2 = 150.37;
+muk = 0.25; %Al on Al lubricated
+mus = 0.3; %Al on Al lubricated
+% muk = 0.0; %Al on Al lubricated
+% mus = 0.0; %Al on Al lubricated
+
 if p0<0
 %     mus = -mus;
 end
@@ -217,10 +233,10 @@ end
 Lc = [Rl,Cr,Lp,Lll];
 
 %Find cg formulas later
-cgn = 24.36/12;
-cgb = Ln+LB/2;
-cgt = 166/12;
-cgfin = 172/12;
+cgn = 19.95/12*1.0285;
+cgb = (Ln+LB/2)*1.0285;
+cgt = 157.63/12*1.0285;
+cgfin = 164.067/12*1.0285;
 cgi = [cgn, cgb, cgt, cgfin];
 
 vwg = zeros(t_steps,3); % Wind model in loop
@@ -261,12 +277,17 @@ elseif atm_stability == 3
 else 
     error('Fix atm stability');
 end
+
 if vwgx<0
     ustar(:) = -ustar(:);
 end
 if vwgy<0
     vstar(:) = -vstar(:);
 end
+% 
+% ustar(:) = -ustar(:);
+% vstar(:) = -vstar(:);
+
 
 % tgust = 5.82;
 tgust = 15.93;
@@ -278,7 +299,8 @@ gust = -30;
 % tma = [0.16/180*pi,0];
 % tmap = 0.0;
 tmap = 0.7;
-tmam = 0.32/180*pi;
+tmam = 0.25/180*pi;
+tmam = 0;
 tma = tmam*[cos(tmap),sin(tmap)];
 % tma = 0*[sin(tmap),cos(tmap)];
 
@@ -436,8 +458,9 @@ Iyy = zeros(t_steps,1);
 Izz = zeros(t_steps,1);
 I = zeros(t_steps,3);
 % Id = 1788.5;
-Id = 1239.3;
-Idz = 3.9;
+% Id = 1322.7;
+Id = 1430;
+Idz = 6.0012;
 If = zeros(t_steps,1);
 Io = zeros(t_steps,1);
 alpha = zeros(t_steps,3);

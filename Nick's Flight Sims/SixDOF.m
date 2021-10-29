@@ -1,9 +1,9 @@
 %% Clear Contamination From Past Runs
 
 %clc; 
-%clear variables; 
+clear variables; 
 % clear variables Frfs 
-clearvars -except zzz
+% clearvars -except zzz
 close all;
 format short
 
@@ -32,10 +32,21 @@ for t = ti:dt:tf
     H = x(i,3);
     Hs(i) = H;
     
+    % End Condition
+    
+    if z < 0 && t > tb && v(i,3) < 0
+        tff = t;
+        itf = i;
+%     disp(i+2)
+        break
+    end
+    
+    % % % %
+    
     if i==1
         tempr0 = 59 - 0.00356*H;
         H0 = H;
-        Pr0 = 473.1*exp(1)^(1.73-0.000048*H);
+        Pr0 = 2116*((Temp0+459.67)/518.6)^5.256;
     end
     [temp(i),P(i),rho(i)] = atmosphere(H,Temp0,P0,tempr0,Pr0,H0,kTemp,R);
     
@@ -56,8 +67,10 @@ for t = ti:dt:tf
     end
     [vwg(i,1),dpdx(i)] = windspeed(vwgx,rho(i),P(i),P1,H,z,h,v(i,3),...
     ustar(i),k,z1,LMBL,hv,fv,dpdxp);
+%     vwg(i,1) = -vwg(i,1);
     [vwg(i,2),dpdy(i)] = windspeed(vwgy,rho(i),P(i),P1,H,z,h,v(i,3),...
     vstar(i),k,z1,LMBL2,hv2,fv,dpdyp);
+%     vwg(i,2) = -vwg(i,2);
 
     %% Gravity Model
     
@@ -179,7 +192,7 @@ for t = ti:dt:tf
 %         T(i,:) = (Tt(i) + (P(1)-P(i))*(pi*(dnoz/2/12)^2))*transpose(rA(:,i));
 %         T(i,:) = (Tt(i) + (P(1)-P(i))*(pi*(dnoz/2/12)^2))*sqrt(1-tA(2,i)^2-tA(1,i)^2)*...
 %             transpose(tA(:,i));
-        T(i,:) = (Tt(i) + (P(1)-P(i))*(pi*(dnoz/2/12)^2))*transpose(tA(:,i));
+        T(i,:) = (1*Tt(i) + (P(1)-P(i))*(pi*(dnoz/2/12)^2))*transpose(tA(:,i));
 %         yoyo = [cos(tma(2)),-sin(tma(2)),0;sin(tma(2)),cos(tma(2)),0;0,0,1]*...
 %             %[cos(tma(1)),0,sin(tma(1));0,1,0;-sin(tma(1)),0,cos(tma(1))]*...
 %             [1,0,0;0,cos(tma(1)),-sin(tma(1));0,sin(tma(1)),cos(tma(1))];
@@ -281,7 +294,7 @@ for t = ti:dt:tf
     
 %     CDa(i) = 5*sin(abs(aoa(i)));
     CDa(i) = 0;
-    CDa(i) = CDab+CDaf;
+%     CDa(i) = CDab+CDaf;
     cd8(i) = CD(i)+CDa(i);
     cd(i) = cd8(i);
 
@@ -436,15 +449,18 @@ for t = ti:dt:tf
     %% Calculate Rail Friction
     
     if s(i) > 0 && dist(i) < RL && t<tb
-        Frfk(i) = muk*w(i)*sin(abs(p(i)))+2*muk/Lll*((norm(T(i,:))-w(i)*cos(p(i))-norm(D(i)))*...
-            (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL-cg(i)));
+%         Frfk(i) = muk*w(i)*sin(abs(p(i)))+2*muk/Lll*((norm(T(i,:))-w(i)*cos(p(i))-norm(D(i)))*...
+%             (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL/12-cg(i)));
+        Frfk(i) = muk*(w(i)*sin(abs(p(i)))+norm(Tr(i,:)));
         Frk(i,:) = abs(Frfk(i))*[sin(p(i)),0,-cos(p(i))];
     elseif dist(i) <= 0 && t<tb
-        Frfs(i) = mus*w(i)*sin(abs(p(i)))+2*mus/Lll*((norm(T(i,:))-w(i)*cos(p(i)))*...
-            (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL-cg(i)));
+%         Frfs(i) = mus*w(i)*sin(abs(p(i)))+2*mus/Lll*((norm(T(i,:))-w(i)*cos(p(i)))*...
+%             (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL/12-cg(i)));
+        Frfs(i) = mus*(w(i)*sin(abs(p(i)))+norm(Tr(i,:)));
         Frs(i,:) = abs(Frfs(i))*[sin(p(i)),0,-cos(p(i))];
-        Frfk(i) = muk*w(i)*sin(abs(p(i)))+2*muk/Lll*((norm(T(i,:))-w(i)*cos(p(i))-norm(D(i)))*...
-            (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL-cg(i)));
+%         Frfk(i) = muk*w(i)*sin(abs(p(i)))+2*muk/Lll*((norm(T(i,:))-w(i)*cos(p(i))-norm(D(i)))*...
+%             (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL/12-cg(i)));
+        Frfk(i) = muk*(w(i)*sin(abs(p(i)))+norm(Tr(i,:)));
         Frk(i,:) = abs(Frfk(i))*[sin(p(i)),0,-cos(p(i))];
     end
     
@@ -452,6 +468,7 @@ for t = ti:dt:tf
     
     if Iapogee2 ~= 0 && ejection==0 && cd8(i) ~= 2.2
         Shock = [1700/3,1700];
+%         Shock = [0,0];
         Reac(i,:) = Shock(1)*[-sign(v(i,1))*cos(p(i)),0,-sin(p(i))]; %Make perpendicular to axis
         Reac(i,:) = Reac(i,:)+Shock(2)*[-sin(p(i)),0,cos(p(i))]; %Axial
         Mreac = [0,-sign(p(i))*Shock(1)*(cg(i)-47/12),0];
@@ -551,9 +568,9 @@ for t = ti:dt:tf
     %% Calculate Moments 
     
     cgp(i) = (cgf(i)*wf(i)+cgo(i)*wo(i))/(wf(i)+wo(i));
-    Mt(i,:) = -(wfr(i)/g)*((Rl-cg(i))^2-(cgp(i)-cg(i))^2)*...
-        transpose(RM*diag([1 1 0],0)/RM*transpose(omega(i,:)));
-    %Mt(i)=0;
+    Mt(i,:) = -(wfr(i)/g)*((Rl-cg(i))^2-(cgp(i)-cg(i))^2)*... % Causes problems w/ wind
+        transpose(RM*diag([1 1 0],0)/RM*transpose(omega(i,:))); % directions and stuff
+    Mt(i)=0;
 %     LM(i,:) = [cg(i)-CPi(i,1),cg(i)-CPi(i,2),CPi(i,3)-cg(i),CPi(i,4)-cg(i)];
 %     MN(i) = Q(i)*Aref*sum(CNa(i,:).*aoai(i,:).*LM(i,:));
     MN(i,:) = -abs(CP8(i) - cg(i))*norm(L(i,:))*cross(rA(:,i),vrw(i,:)/norm(vrw(i,:)))/...
@@ -634,15 +651,6 @@ for t = ti:dt:tf
     Qa(i) = Q(i)*aoa(i);
     QCNa(i) = Q(i)*sum(abs(CNa(i,:)));
     
-    %% End Condition
-    
-    if z < 0 && t > tb && v(i,3) < 0
-        tff = t;
-        itf = i;
-%     disp(i+2)
-        break
-    end
-    
     %% Iterate
     
     iters(i) = i;
@@ -683,8 +691,9 @@ FinLift = 0.5*rho(I_maxQCNa)*CNa(I_maxQCNa,4)*aoa(I_maxQCNa)*Aref*norm(vrw(I_max
 % I_maxQCNa = Iapogee2;
 % I_maxQCNa = 2;
 % I_maxQCNa = I_main;
-OTR_Tavg = sum(T(1:OTRi,2))/OTRi;
-% deployment_v = abs(v(Iapogee2,1));
+OTR_Tavg = sum(T(1:OTRi,3))/OTRi;
+% OTR_Tavg = sum(Tt(1:floor(tb*100)))/floor(tb*100);
+deployment_v = s(Iapogee);
 % fprintf("Apogee: %f\nDeployment Velocity: %f\nOTR Speed: %f\n",apogee,deployment_v,OTRs);
 % [ymax,t1I] = max(ys);
 % [vmax,t2I] = max(vs);
@@ -696,9 +705,9 @@ OTR_Tavg = sum(T(1:OTRi,2))/OTRi;
 
 m1 = 9.62; %Nose
 m2 = 28.48+2.5;
-m3 = 8.87+wo(I_maxQCNa);
+m3 = 8.87+wo(1);
 m4 = 2.26;
-m5 = 8.12+wf(I_maxQCNa)+2.5;
+m5 = 8.12+wf(1)+2.5;
 m6 = 9.35; %Right Above Thrust Bulkhead
 m7 = 19.39;
 masses = [m1,m2,m3,m4,m5,m6,m7]/gs(I_maxQCNa);
@@ -932,39 +941,40 @@ for mi = length(masses):-1:1
 end
 % BM2(length(masses)+2) = 0;
 
-% d = 7;
-% Aref = pi*(d/12/2)^2;
-% Lnose2(1) = 0;
-% Lbody2(1) = 0;
-% Ltail2(1) = 0;
-% Lfins2(1) = 0;
-% cgs(length(masses)+1,2) = 0;
-% % FVL(1) = 0;
-% % BM4(1) = 0;
-% FVL(length(masses)+1) = 0;
-% BM4(length(masses)+1) = 0;
-% % FVL(1:2) = 0;
-% % BM4(1:2) = 0;
-% % masses(1) = 0;
-% % distances(2) = 0;
-% Reac2 = 0;
-% aN2 = ((-0.5*aoa(I_maxQCNa)*sum(CNa(I_maxQCNa,:))*Aref*rho(I_maxQCNa)*norm(vrw(I_maxQCNa,:))^2+...
-%     Reac1(I_maxQCNa,1))/(w(I_maxQCNa)/gs(I_maxQCNa)));
-% for mi = length(masses):-1:1
-%     ks(mi) = 1/2;
-%     ls(mi) = distances(mi+1);
-%     if mi==1
-%         ks(mi) = 1/4;
-%     end
-%     if mi==length(masses)
-%         ks(mi) = 1-(1+2*(r/d)+3*(r/d)^2)/(4*(1+(r/d)+(r/d)^2));
-%     end
-%     cgs(mi,3) = ks(mi)*ls(mi)+sum(distances(mi+2:end));
-%     Ii(mi) = (masses(mi)*gs(I_maxQCNa)/12)*(3*(r/12)^2+(ls(mi)/12)^2);
-%     Iz(mi) = (masses(mi)*gs(I_maxQCNa)/2)*(r/12)^2;
-% end
-% Id2 = sum(Ii(1:7)+masses(1:7)*gs(I_maxQCNa).*((Rl-cg(I_maxQCNa))-transpose(cgs(1:7,3)/12)).^2);
-% Id2 = sum(Iz(1:7));
+d = 7;
+Aref = pi*(d/12/2)^2;
+Lnose2(1) = 0;
+Lbody2(1) = 0;
+Ltail2(1) = 0;
+Lfins2(1) = 0;
+cgs(length(masses)+1,2) = 0;
+% FVL(1) = 0;
+% BM4(1) = 0;
+FVL(length(masses)+1) = 0;
+BM4(length(masses)+1) = 0;
+% FVL(1:2) = 0;
+% BM4(1:2) = 0;
+% masses(1) = 0;
+% distances(2) = 0;
+Reac2 = 0;
+r = r0;
+aN2 = ((-0.5*aoa(I_maxQCNa)*sum(CNa(I_maxQCNa,:))*Aref*rho(I_maxQCNa)*norm(vrw(I_maxQCNa,:))^2+...
+    Reac1(I_maxQCNa,1))/(w(I_maxQCNa)/gs(I_maxQCNa)));
+for mi = length(masses):-1:1
+    ks(mi) = 1/2;
+    ls(mi) = distances(mi+1);
+    if mi==1
+        ks(mi) = 1/4;
+    end
+    if mi==length(masses)
+        ks(mi) = 1-(1+2*(r/d)+3*(r/d)^2)/(4*(1+(r/d)+(r/d)^2));
+    end
+    cgs(mi,3) = ks(mi)*ls(mi)+sum(distances(mi+2:end));
+    Ii(mi) = (masses(mi)*gs(I_maxQCNa)/12)*(3*(r/12)^2+(ls(mi)/12)^2);
+    Iz(mi) = (masses(mi)*gs(I_maxQCNa)/2)*(r/12)^2;
+end
+Id = sum(Ii(1:7)+masses(1:7)*gs(I_maxQCNa).*((Rl-cg(I_maxQCNa))-transpose(cgs(1:7,3)/12)).^2);
+Id2 = sum(Iz(1:7));
 
 % dadt = Q(I_maxQCNa)*Aref*aoa(I_maxQCNa)/Id2*sum(CNa(I_maxQCNa,1:4).*...
 %     (-cg(I_maxQCNa)+(CPi(I_maxQCNa,1:4))))-Reac1(I_maxQCNa,1)*((Rl-RB/12)-cg(I_maxQCNa))/Id2;
@@ -1060,13 +1070,13 @@ ylabel('Altitude')
 % ylabel('Vertical Acceleration')
 figure
 plot(x(1:length(zs),1),zs);
-xlabel('Horizontal Displacement');
-ylabel('Altitude');
+xlabel('Westing (ft)');
+ylabel('Altitude (ft)');
 %%axis equal
 figure
 plot3(x(1:length(zs),1),x(1:length(zs),2),zs);
-xlabel('Horizontal Displacement (ft)');
-ylabel('Lateral Displacement (ft)');
+xlabel('Westing (ft)');
+ylabel('Southing (ft)');
 zlabel('Altitude (ft)');
 grid on;
 %%axis equal
@@ -1147,6 +1157,11 @@ ylabel('CD');
 figure
 plot(ts(OTRi:Iapogee),stab(OTRi:Iapogee));
 xlabel('Time');
+ylabel('Stability');
+[MaxMach, I_MaxMach] = max(mach);
+figure
+plot(mach(OTRi:I_MaxMach),stab(OTRi:I_MaxMach));
+xlabel('Mach');
 ylabel('Stability');
 % figure
 % plot(ts(OTRi:Iapogee),vgust(OTRi:Iapogee));

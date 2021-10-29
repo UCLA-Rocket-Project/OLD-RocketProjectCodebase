@@ -1,11 +1,10 @@
 clear variables;
-close all;
+% close all;
 clc;
 
 %% Load Map of Launch Site
-
-img_far = imread('image.png');
-img_h_mi = 15840; img_w_mi = 26400;
+img_far = imread('image1.png');
+img_h_mi = 12; img_w_mi = 20;
 img_h = size(img_far,1); img_w = size(img_far,2);
 figure;
 hold on;
@@ -16,24 +15,25 @@ imshow(img_far,RI);
 
 %% Run the Trajectory Simulations
 
-for si = 1:1:51 % First loop is mean
-clearvars -except si xs apogees OTRSs
+for si = 1:1:25 % First loop is mean
+clearvars -except si xs apogees OTRSs deployment_vs drift maxS
 %% Initial values
 
 recovery = 1; % 0 for no recovery / 1 for recovery
 turb = 0; % 0 for none / 1 for light / 2 for medium / 3 for severe
 
-h = 3500;
+h = 2000;
 if si==1
-    Temp0 = 70;
+    Temp0 = 79.5;
     kTemp = 10000; % Seems to be the most reasonable "tending to atmospheric model" rate
-    P0 = 14.24*144;
+    P0 = 14.56*144;
+    hr0 = 0.32;
 else
-    Temp0 = 70*normrnd(1,.1^2);
-    kTemp = 10000*normrnd(1,.2^2); % Seems to be the most reasonable "tending to atmospheric model" rate
-    P0 = 14.24*144*normrnd(1,.1^2);
+    Temp0 = 79.5*normrnd(1,.14);
+    kTemp = 10000*normrnd(1,.1); % Seems to be the most reasonable "tending to atmospheric model" rate
+    P0 = 14.56*144*normrnd(1,0.005);
+    hr0 = 0.32*normrnd(1,0);
 end
-hr0 = 0;
 %g = 32.174;
 lat = 34.0522*pi/180;
 glat = 9.7803*((1+0.001932*(sin(lat))^2)/(sqrt(1-0.006694*(sin(lat))^2)));
@@ -46,26 +46,33 @@ Eomega = 7.2921*10^(-5);
 
 % vwgx = -5*5280/3600;
 % vwgx = -27;
+% vwgg = -15.2*normrnd(1,0.658/2);
+% vwg = 0;
+vwgd = 7*pi/15; % CCW from due west
 if si==1
-    vwgx = -5*5280/3600;
-    vwgy = 5*5280/3600;
+    vwgg = -5;
+    vwgx = -vwgg*cos(vwgd)*5280/3600;
+    vwgy = vwgg*sin(vwgd)*5280/3600;
 else
-    vwgx = -5*5280/3600*normrnd(1,0.2^2);
-    vwgy = 5*5280/3600*normrnd(1,0.2^2);
+    vwgg = -5*normrnd(1,0.658/2);
+    vwgx = -vwgg*cos(vwgd)*5280/3600;
+    vwgy = vwgg*sin(vwgd)*5280/3600;
 end
 k = 0.4;
 dref = 0.000;
 z1 = 0.1/100;
 atm_stability = 1; % 1=neutral, 2=stable, 3=unstable
 
-dw = 91.03;
-T0 = readmatrix('thrustArray.xlsx');
+dw = 124;
+load('Hot_Fire_5_1_1_Thrust_Data');
+T0(:,1) = time_511;
+T0(:,2) = thrust_511;
 % T0 = readmatrix('Odyssey3Thrust.xlsx');
 % T0 = readmatrix('PropSimThrust.xlsx');
 Imp = trapz(T0(:,1),T0(:,2));
 Impfactor = 9200/Imp-0.037;
-T0 = T0*Impfactor;
-Imp = trapz(T0(:,1),T0(:,2));
+% T0 = T0*Impfactor;
+% Imp = trapz(T0(:,1),T0(:,2));
 % Isp = 200;
 wp = 50;
 OF = 1.5;
@@ -73,8 +80,8 @@ wfi = wp/(OF+1);
 woi = wfi*OF;
 ww = dw+wfi+woi;
 Isp = Imp/(ww-dw);
-cgfi = 124.43/12;
-cgoi = 96.18/12;
+cgfi = 124.43/12*1.0285;
+cgoi = 96.18/12*1.0285;
 lfi = 22.25/12;
 loi = 25.07/12;
 xfuel0 = cgfi-lfi/2;
@@ -83,15 +90,16 @@ dtank = 7/12;
 rtank = dtank/2;
 % dnoz = 4;
 dnoz = 2.81;
-cgd = 101.28/12;
+cgd = 111/12;
 if si==1
     Ecg = 1;
-    RLa = 0;
+    RLa = -5*pi/180;
+    RL = 53.5;
 else
-    Ecg = normrnd(1,0.025^2);
-    RLa = normrnd(0,0.1^2);
+    Ecg = normrnd(1,0.005);
+    RLa = -5*pi/180*normrnd(1,0.2);
+    RL = 53.5*normrnd(1,0.03);
 end
-RL = 55;
 p0 = RLa;
 RLv = [-RL*sin(RLa),RL*cos(RLa)];
 df = (wfi/g)/(lfi*pi*rtank^2);
@@ -101,7 +109,7 @@ ejection = 0;
 ti = 0;
 tb = T0(end,1);
 % tb = round(find(T0(:,2),1,'last')/1000,2); %PropSim
-tf = 350;
+tf = 750;
 dt = 0.01;
 t_steps = tf/dt;
 
@@ -144,11 +152,11 @@ Lf = sqrt(S^2+(Cr/2-Ct/2)^2);
 dfa = dr;
 Kf = 1+(dr/2)/(S+(dr/2)); 
 CNaf = Kf*((4*n*(S/(d/12))^2)/(1+sqrt(1+(2*Lf/(Cr+Ct))^2)));
-Ln = 35/12;
+Ln = 35/12*1.0285;
 xn = 0.466*Ln;
-LB = 125.23/12;
+LB = 125.23/12*1.0285;
 xp = Ln+LB;
-Lt = 15.75/12;
+Lt = 15.75/12*1.0285;
 xt = xp+Lt/3*((1+(1-(d/12)/dr)/(1-((d/12)/dr)^2)));
 Rl = Ln+LB+Lt;
 xB = Rl-Cr;
@@ -177,9 +185,9 @@ if si==1
     Ecl = 1;
     Ecd = 1;
 else
-    Ecp = normrnd(1,0.05^2);
-    Ecl = normrnd(1,0.1^2);
-    Ecd = normrnd(1,0.2^2);
+    Ecp = normrnd(1,0.02);
+    Ecl = normrnd(1,0.01);
+    Ecd = normrnd(1,0.03);
 end
 
 Apf = Afe;
@@ -235,25 +243,25 @@ nb = 3.6542*((Rl-Ln)/(d/12))^(-0.2733);
 % Apro = 6/144;
 % Apro = 0.84/144;
 % Apro = 0;
-Apro = 1.47/144;
-% Apro = 4.15/144;
-Lp = 57/12;
-aPro = 70.32;
-rpro = sqrt(Apro/pi);
-Spro = 2*2*Apro+2*pi*rpro*Lp;
+rpro = 0.97/12;
+Apro = pi/2*rpro^2;
+Lp = 68.4/12;
+aPro = 75.08;
+% rpro = sqrt(Apro/pi);
+Spro = 2*Apro+2*pi*rpro*Lp;
 % Spro = 2*2*Apro+2*2*pi*rpro/2*Lp;
 % Spro = 113.03/144;
 
 All = 1/144; %in
-% All = 0/144; %in
 rll = sqrt(All/pi);
-Lll = 6/12;
-Sll = 2*All+2*2*pi*rll*Lll;
-aLL = Rl/2; %Midway on rocket
-muk = 0.12; %Steel on steel lubricated
-mus = 0.16; %Steel on steel lubricated
-% muk = 0; %Steel on steel lubricated
-% mus = 0; %Steel on steel lubricated
+Lll = 1.72/12;
+Sll = 2*All+2*pi*rll*Lll;
+aLL = 80.97;
+aLL2 = 150.37;
+muk = 0.25; %Al on Al lubricated
+mus = 0.3; %Al on Al lubricated
+% muk = 0.0; %Al on Al lubricated
+% mus = 0.0; %Al on Al lubricated
 if p0<0
 %     mus = -mus;
 end
@@ -261,10 +269,10 @@ end
 Lc = [Rl,Cr,Lp,Lll];
 
 %Find cg formulas later
-cgn = 24.36/12;
-cgb = Ln+LB/2;
-cgt = 166/12;
-cgfin = 172/12;
+cgn = 19.95/12*1.0285;
+cgb = Ln+LB/2*1.0285;
+cgt = 157.63/12*1.0285;
+cgfin = 164.067/12*1.0285;
 cgi = [cgn, cgb, cgt, cgfin];
 
 vwg = zeros(t_steps,3); % Wind model in loop
@@ -301,9 +309,9 @@ elseif atm_stability == 3
 else 
     error('Fix atm stability');
 end
-if vwgx<0
-    ustar(:) = -ustar(:);
-end
+% if vwgx<0
+%     ustar(:) = -ustar(:);
+% end
 
 % tgust = 5.82;
 tgust = 15.93;
@@ -321,17 +329,16 @@ if si==1
     tma = 0*[cos(tmap),sin(tmap)];
 else
     tmap = 2*pi*rand(1);
-    tma = normrnd(0,0.05^2)*[sin(tmap),cos(tmap)];
+    tma = normrnd(0,0.01)*[sin(tmap),cos(tmap)];
 end
 % tmap = 0.7;
 % tma = 0.32/180*pi*[cos(tmap),sin(tmap)];
-
 
 % cant = 1/180*pi;
 if si==1
     cant = 0;
 else
-    cant = normrnd(0,(.5/180*pi)^2);
+    cant = normrnd(0,0);
 end
 % rf = r0/12;
 % CR = 0.04;
@@ -485,8 +492,8 @@ Iyy = zeros(t_steps,1);
 Izz = zeros(t_steps,1);
 I = zeros(t_steps,3);
 % Id = 1788.5;
-Id = 1239.3*normrnd(1,.1^2);
-Idz = 3.9*normrnd(1,.1^2);
+Id = 1430;
+Idz = 6.0012;
 If = zeros(t_steps,1);
 Io = zeros(t_steps,1);
 alpha = zeros(t_steps,3);
@@ -547,6 +554,14 @@ for t = ti:dt:tf
     Hs(i) = H;
     z = x(i,3)-h;
     zs(i) = z;
+    
+    if z < 0 && t > tb && v(i,3) < 0
+        tff = t;
+        itf = i;
+    %     disp(i+2)
+        break
+    end
+    
     if H < 36152 && H >= 0
         temp(i) = 59 - 0.00356*H;
         tempr(i) = temp(i);
@@ -1072,61 +1087,61 @@ for t = ti:dt:tf
         cd8(i) = 0;
     end
     
-    Xf = CPi(i,4);
-
-    rf = (r0/12+DR)/2+S/3;
-    
-    for fi=1:1:4
-       PiB(fi,:) = [rf*sin(-pi/2+fi*pi/2),rf*cos(-pi/2+fi*pi/2),-Xf];
-       Pi(fi,:) = transpose(RM*transpose(PiB(fi,:)))+x(i,:);
-       Si(fi,:) = x(i,:)-Pi(fi,:);
-%        Si(fi,:) = transpose(-RM*transpose(PiB(fi,:)));
-       if norm(omega(i,:))~=0
-           Vp(fi,:) = norm(omega(i,:))*norm(Si(fi,:))*sin(acos(dot((Si(fi,:)/norm(Si(fi,:))),...
-               (omega(i,:)/norm(omega(i,:))))))*cross((Si(fi,:)/norm(Si(fi,:))),...
-               (omega(i,:)/norm(omega(i,:))))/norm(cross((Si(fi,:)/norm(Si(fi,:))),...
-               (omega(i,:)/norm(omega(i,:)))))+vrw(i,:);
-       else
-           Vp(fi,:) = vrw(i,:);
-       end
-%        li(fi,:) = [cos(-pi/2+fi*pi/2),sin(-pi/2+fi*pi/2),0];
-       if fi==1
-           li(fi,:) = transpose(pA(:,i));
-       elseif fi==2
-           li(fi,:) = transpose(yA(:,i));
-       elseif fi==3
-           li(fi,:) = transpose(-pA(:,i));
-       elseif fi==4
-           li(fi,:) = transpose(-yA(:,i));
-       end
-       Qc(1,i) = cos(cant/2);
-       Qc(2:4,i) = sin(cant/2)*cross(li(fi,:),rA(:,i))/norm(cross(li(fi,:),rA(:,i)));
-       Rc = [1-2*Qc(3,i)^2-2*Qc(4,i)^2, 2*Qc(2,i)*Qc(3,i)-2*Qc(1,i)*Qc(4,i),...
-           2*Qc(2,i)*Qc(4,i)+2*Qc(1,i)*Qc(3,i);...
-           2*Qc(2,i)*Qc(3,i)+2*Qc(1,i)*Qc(4,i),...
-           1-2*Qc(2,i)^2-2*Qc(4,i)^2, 2*Qc(3,i)*Qc(4,i)-2*Qc(1,i)*Qc(2,i);...
-           2*Qc(2,i)*Qc(4,i)-2*Qc(1,i)*Qc(3,i),...
-           2*Qc(3,i)*Qc(4,i)+2*Qc(1,i)*Qc(2,i), 1-2*Qc(2,i)^2-2*Qc(3,i)^2];
-       aoafi(i,fi) = pi/2-acos(dot((Vp(fi,:)/norm(Vp(fi,:))),Rc*transpose(li(fi,:))));
-       Vpn(i,fi) = norm(Vp(fi,:));
-    end
-    aoaf(i) = sum(aoafi(i,:))/n;
-    Vf(i) = sum(Vpn(i,:))/n;
-%     CR(i) = aoaf(i)/750;
-    LFr(i) = (CNaf/n)*aoaf(i);
-    
-    rf = (r0/12+DR)/2;
-    CNa0 = 2*pi/beta;
-    Clf(i) = n*(MAC+rf)*(CNaf/n)*cant/(d/12);
-    term = (Cr+Ct)/2*rf^2*S+(Cr+2*Ct)/3*rf*S^2+(Cr+3*Ct)/12*S^3;
-    if mach(i)<1
-        rollrate(i) = Aref*beta*norm(vrw(i,:))*MAC*(CNaf/n)*cant/(2*pi*term);
-    elseif mach(i)>=1
-        rollrate(i) = Aref*beta*norm(vrw(i,:))*MAC*(CNaf/n)*cant/(2*pi*term);
-    end
-    Cdf(i) = n*CNa0*rollrate(i)*term/Aref/(d/12)/norm(vrw(i,:));
-    CR(i) = Clf(i)-Cdf(i);
-    rf = (r0/12+DR)/2+S/3;
+%     Xf = CPi(i,4);
+% 
+%     rf = (r0/12+DR)/2+S/3;
+%     
+%     for fi=1:1:4
+%        PiB(fi,:) = [rf*sin(-pi/2+fi*pi/2),rf*cos(-pi/2+fi*pi/2),-Xf];
+%        Pi(fi,:) = transpose(RM*transpose(PiB(fi,:)))+x(i,:);
+%        Si(fi,:) = x(i,:)-Pi(fi,:);
+% %        Si(fi,:) = transpose(-RM*transpose(PiB(fi,:)));
+%        if norm(omega(i,:))~=0
+%            Vp(fi,:) = norm(omega(i,:))*norm(Si(fi,:))*sin(acos(dot((Si(fi,:)/norm(Si(fi,:))),...
+%                (omega(i,:)/norm(omega(i,:))))))*cross((Si(fi,:)/norm(Si(fi,:))),...
+%                (omega(i,:)/norm(omega(i,:))))/norm(cross((Si(fi,:)/norm(Si(fi,:))),...
+%                (omega(i,:)/norm(omega(i,:)))))+vrw(i,:);
+%        else
+%            Vp(fi,:) = vrw(i,:);
+%        end
+% %        li(fi,:) = [cos(-pi/2+fi*pi/2),sin(-pi/2+fi*pi/2),0];
+%        if fi==1
+%            li(fi,:) = transpose(pA(:,i));
+%        elseif fi==2
+%            li(fi,:) = transpose(yA(:,i));
+%        elseif fi==3
+%            li(fi,:) = transpose(-pA(:,i));
+%        elseif fi==4
+%            li(fi,:) = transpose(-yA(:,i));
+%        end
+%        Qc(1,i) = cos(cant/2);
+%        Qc(2:4,i) = sin(cant/2)*cross(li(fi,:),rA(:,i))/norm(cross(li(fi,:),rA(:,i)));
+%        Rc = [1-2*Qc(3,i)^2-2*Qc(4,i)^2, 2*Qc(2,i)*Qc(3,i)-2*Qc(1,i)*Qc(4,i),...
+%            2*Qc(2,i)*Qc(4,i)+2*Qc(1,i)*Qc(3,i);...
+%            2*Qc(2,i)*Qc(3,i)+2*Qc(1,i)*Qc(4,i),...
+%            1-2*Qc(2,i)^2-2*Qc(4,i)^2, 2*Qc(3,i)*Qc(4,i)-2*Qc(1,i)*Qc(2,i);...
+%            2*Qc(2,i)*Qc(4,i)-2*Qc(1,i)*Qc(3,i),...
+%            2*Qc(3,i)*Qc(4,i)+2*Qc(1,i)*Qc(2,i), 1-2*Qc(2,i)^2-2*Qc(3,i)^2];
+%        aoafi(i,fi) = pi/2-acos(dot((Vp(fi,:)/norm(Vp(fi,:))),Rc*transpose(li(fi,:))));
+%        Vpn(i,fi) = norm(Vp(fi,:));
+%     end
+%     aoaf(i) = sum(aoafi(i,:))/n;
+%     Vf(i) = sum(Vpn(i,:))/n;
+% %     CR(i) = aoaf(i)/750;
+%     LFr(i) = (CNaf/n)*aoaf(i);
+%     
+%     rf = (r0/12+DR)/2;
+%     CNa0 = 2*pi/beta;
+%     Clf(i) = n*(MAC+rf)*(CNaf/n)*cant/(d/12);
+%     term = (Cr+Ct)/2*rf^2*S+(Cr+2*Ct)/3*rf*S^2+(Cr+3*Ct)/12*S^3;
+%     if mach(i)<1
+%         rollrate(i) = Aref*beta*norm(vrw(i,:))*MAC*(CNaf/n)*cant/(2*pi*term);
+%     elseif mach(i)>=1
+%         rollrate(i) = Aref*beta*norm(vrw(i,:))*MAC*(CNaf/n)*cant/(2*pi*term);
+%     end
+%     Cdf(i) = n*CNa0*rollrate(i)*term/Aref/(d/12)/norm(vrw(i,:));
+%     CR(i) = Clf(i)-Cdf(i);
+%     rf = (r0/12+DR)/2+S/3;
     
     
     %L(i,:) = cl8(i)/2*Aref*rho(i)*(norm(vrw(i,:)))^2*[cos(p(i)),sin(p(i))];
@@ -1163,8 +1178,10 @@ for t = ti:dt:tf
             break
         end
         if zs(i) > 1500
-            cd8(i) = 1.6;
-            d = 24;
+%             cd8(i) = 1.6;
+%             d = 24;
+            cd8(i) = 2.2;
+            d = 60;
             Aref = pi*(d/12/2)^2;
 %             D(i,:) = cd8(i)/2*Aref*rho(i)*(norm(vrw(i,:)))^2*[sin(phi(i)),-cos(phi(i))];
             D(i,:) = -cd8(i)/2*Aref*rho(i)*(norm(vrw(i,:)))^2*vhat(i,:);
@@ -1178,6 +1195,9 @@ for t = ti:dt:tf
 %             end
             cd8(i) = 2.2;
             d = 60;
+%             cd8(i) = 1.6;
+%             d = 24;
+
             Aref = pi*(d/12/2)^2;
 %             D(i,:) = cd8(i)/2*Aref*rho(i)*(norm(vrw(i,:)))^2*[sin(phi(i)),-cos(phi(i))];
             D(i,:) = -cd8(i)/2*Aref*rho(i)*(norm(vrw(i,:)))^2*vhat(i,:);
@@ -1207,15 +1227,18 @@ for t = ti:dt:tf
     %C(i,:) = [0,0];
     
     if s(i) > 0 && dist(i) < RL && t<tb
-        Frfk(i) = muk*w(i)*sin(abs(p(i)))+2*muk/Lll*((norm(T(i,:))-w(i)*cos(p(i))-norm(D(i)))*...
-            (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL-cg(i)));
+%         Frfk(i) = muk*w(i)*sin(abs(p(i)))+2*muk/Lll*((norm(T(i,:))-w(i)*cos(p(i))-norm(D(i)))*...
+%             (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL/12-cg(i)));
+        Frfk(i) = muk*(w(i)*sin(abs(p(i)))+norm(Tr(i,:)));
         Frk(i,:) = abs(Frfk(i))*[sin(p(i)),0,-cos(p(i))];
     elseif dist(i) <= 0 && t<tb
-        Frfs(i) = mus*w(i)*sin(abs(p(i)))+2*mus/Lll*((norm(T(i,:))-w(i)*cos(p(i)))*...
-            (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL-cg(i)));
+%         Frfs(i) = mus*w(i)*sin(abs(p(i)))+2*mus/Lll*((norm(T(i,:))-w(i)*cos(p(i)))*...
+%             (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL/12-cg(i)));
+        Frfs(i) = mus*(w(i)*sin(abs(p(i)))+norm(Tr(i,:)));
         Frs(i,:) = abs(Frfs(i))*[sin(p(i)),0,-cos(p(i))];
-        Frfk(i) = muk*w(i)*sin(abs(p(i)))+2*muk/Lll*((norm(T(i,:))-w(i)*cos(p(i))-norm(D(i)))*...
-            (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL-cg(i)));
+%         Frfk(i) = muk*w(i)*sin(abs(p(i)))+2*muk/Lll*((norm(T(i,:))-w(i)*cos(p(i))-norm(D(i)))*...
+%             (r0/12+rll)+w(i)*sin(abs(p(i)))*(aLL/12-cg(i)));
+        Frfk(i) = muk*(w(i)*sin(abs(p(i)))+norm(Tr(i,:)));
         Frk(i,:) = abs(Frfk(i))*[sin(p(i)),0,-cos(p(i))];
     end
     
@@ -1283,7 +1306,7 @@ for t = ti:dt:tf
     cgp(i) = (cgf(i)*wf(i)+cgo(i)*wo(i))/(wf(i)+wo(i));
     Mt(i,:) = -(wfr(i)/g)*((Rl-cg(i))^2-(cgp(i)-cg(i))^2)*...
         transpose(RM*diag([1 1 0],0)/RM*transpose(omega(i,:)));
-    %Mt(i)=0;
+    Mt(i)=0;
     
     if CP8(i)<cg(i) && dist(i)>RL-Rl+cg(i) && v(i,3)>0 && abs(aoa(i))<15*pi/180
 %         disp(i);
@@ -1336,8 +1359,8 @@ for t = ti:dt:tf
 %     MT(i,:) = [0,0,0];
 %     M(i) = MN(i)+Mt(i)+Md(i)+Mll(i)+Mpro(i)+Mreac;
 %     Mr(i,:) = CR(i)/2*rho(i)*Aref*(rollrate(i)*rf)^2*(d/12)*transpose(rA(:,i));
-    Mr(i,:) = -CR(i)*LFr(i)*rf*transpose(rA(:,i));
-%     Mr(i,:) = [0,0,0];
+%     Mr(i,:) = -CR(i)*LFr(i)*rf*transpose(rA(:,i));
+    Mr(i,:) = [0,0,0];
     M(i,:) = MN(i,:)+Mt(i,:)+Mll(i,:)+Mpro(i,:)+Mreac+MT(i,:)+Mr(i,:);
 %     alpha(i,:)=(I0)\transpose(M(i,:)-transpose(Idot*transpose(omega(i,:))));
     alpha(i,:)=(I0)\(transpose(M(i,:)-...
@@ -1380,25 +1403,25 @@ for t = ti:dt:tf
 %         NF2(i) = sign(alpha(i))*norm(cross(F(i,:),[-sin(p(i)),cos(p(i))]));
 %     end
 
-if z < 0 && t > tb && v(i,3) < 0
-    tff = t;
-    itf = i;
-%     disp(i+2)
-    break
-end
     iters(i) = i;
     i = i + 1;
 end
 xs(si,1:3) = x(itf,:);
-apogees(si) = zs(Iapogee2);
+[apogee,Iapogee] = max(zs);
+apogees(si) = zs(Iapogee);
 OTRSs(si) = OTRs;
+deployment_vs(si) = s(Iapogee);
+drift(si) = norm(x(itf,:)-x(1,:));
+maxS(si) = max(s);
 end
+xs(:,1:2) = -xs(:,1:2)/5280;
+x(:,1:2) = -x(:,1:2)/5280;
 hold on
-plot(xs(2:end,1),xs(2:end,2),'x','MarkerSize',10);
+plot(xs(2:end,1),xs(2:end,2),'x','MarkerSize',10,'LineWidth',2.0);
 hold on
-plot(x(1,1),x(1,2),'o','MarkerSize',20);
+plot(x(1,1),x(1,2),'o','MarkerSize',20,'LineWidth',2.0);
 hold on
-plot(xs(1,1),xs(1,2),'+','MarkerSize',20);
+plot(xs(1,1),xs(1,2),'+','MarkerSize',20,'LineWidth',2.0);
 
 %% Obtain Statistical Landing Plots
 
@@ -1427,8 +1450,8 @@ for scp = 0.95:-0.05:0.8
     plot(ellipse(:,1)+xs(1,1),ellipse(:,2)+xs(1,2),'-','LineWidth',2.0);
 end
 
-xlabel('Easting (ft)','FontSize',14);
-ylabel('Southing (ft)','FontSize',14);
+xlabel('Easting (mi)','FontSize',14);
+ylabel('Southing (mi)','FontSize',14);
 title('Landing Positions','FontSize',14);
 legend({'Stochastic Landings','Launch Pad','Mean Landing','95% Confidence',...
     '90% Confidence','85% Confidence','80% Confidence'},'FontSize',14);
